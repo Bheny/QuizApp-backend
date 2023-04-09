@@ -1,11 +1,23 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+class Classroom(models.Model):
+    name = models.CharField(max_length=255)
+    lecturer = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    modified_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+    
+    def get_all_quizes(self):
+        quizes = self.quiz.all()
+        return quizes 
 
 class Quiz(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
-    created_by = models.ForeignKey(User, related_name="quiz", on_delete=models.CASCADE)
+    classroom = models.ForeignKey(Classroom, related_name="quiz", on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 

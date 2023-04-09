@@ -1,0 +1,187 @@
+from django.shortcuts import render
+from rest_framework.response import Response 
+from rest_framework import viewsets, generics, permissions, serializers, filters
+from knox.models import AuthToken
+from .models import PhoneBook
+from rest_framework import status
+from .serializers import *
+from Profiles.models import Profile
+from .services import send_sms
+from Profiles.serializers import ProfileSerializer
+from django.contrib.auth.models import User
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import send_mail
+from django.conf import settings
+from django.shortcuts import render
+from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from rest_framework import status
+from rest_framework.views import APIView
+from .server import *
+
+from rest_framework.authtoken.serializers import AuthTokenSerializer
+from knox.views import LoginView as KnoxLoginView
+from django.contrib.auth import login
+
+class PasswordResetView(APIView):
+    def post(self, request, user_id, token):
+        password = request.data.get('password')
+        confirm_password = request.data.get('confirm_password')
+        if password != confirm_password:
+            return Response({'status': 'error', 'message': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+        user = User.objects.filter(id=user_id).first()
+        if user and PasswordResetTokenGenerator().check_token(user, token):
+            try:
+                user.set_password(password)
+                user.save()
+                return Response({'status': 'success'})
+            except ValidationError as e:
+                return Response({'status': 'error', 'message': e.message}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'status': 'error', 'message': 'Invalid user or token'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordRecoveryView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+        if user:
+            token = PasswordResetTokenGenerator().make_token(user)
+            reset_link = f"{settings.BASE_URL}/password-reset/{user.id}/{token}"
+            subject = 'Password Recovery'
+            message = f'Click on the link below to reset your password:\n{reset_link}'
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [email]
+            send(subject, message,  recipient_list)
+            return Response({'status': 'success'})
+        else:
+            return Response({'status': 'error', 'message': 'User with that email not found'})
+
+class SignUpAPI(generics.GenericAPIView):
+	serializer_class = RegisterSerializer 
+
+	def post(self, request, *args, **kwargs):
+		serializer = self.get_serializer(data=request.data)
+		print("serializer is valid: ",serializer.is_valid())
+		# serializer.is_valid(raise_exception=True)
+
+		if serializer.is_valid():
+			user = serializer.save() 
+			message = "Profile Created, You are now an Associate of the Rebel Ranks"
+			token = AuthToken.objects.create(user)
+			return Response({
+				"users": UserSerializer(user, context=self.get_serializer_context()).data,
+				"token": token[1],
+				"email": status
+			})
+		else:
+			return Response(serializer.errors)
+
+
+class SignInAPI(generics.GenericAPIView):
+	serializer_class = LoginSerializer 
+
+	def post(self, request):
+		serializer = self.get_serializer(data=request.data)
+		print("this:", request.user)
+		serializer.is_valid(raise_exception=True)
+		data = serializer.validated_data
+		try:
+			
+			token = AuthToken.objects.create(data)[1]
+			user = UserSerializer(data, context=self.get_serializer_context()).data
+
+			
+			user_data = {
+			'id':user['id'],
+			'username':user['username'],
+			'email':user['email'],
+			}
+			
+			profile = Profile.objects.filter(user=user_data['id'])
+			return Response({
+			# "user": user_data ,
+			"profile": ProfileSerializer(profile).data,
+			"token": token
+			})
+
+		except Profile.DoesNotExist:
+			return Response({'data':'User account with this Profile does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+		
+		
+class LoginView(KnoxLoginView):
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request, format=None):
+        serializer = AuthTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        login(request, user)
+        return super(LoginView, self).post(request, format=None)
+		
+		
+		
+		
+class sendOtpViewSet(generics.GenericAPIView):
+	"""
+		This endpoints takes in the phone number , generates an otp and sends it to the number
+	"""
+	serializer_class = PhoneBookSerializer 
+
+	def post(self, request):
+		try:
+			new_phone = request.data['phone']
+			phone, created = PhoneBook.objects.get_or_create(phone=new_phone)
+			print(phone)
+			sent = send_sms(phone)
+			print(dir(sent))
+			return Response({'message':'sent'},status=status.HTTP_201_CREATED)
+		except KeyError as e:
+			message = "KeyError !!! "+str(e)
+			return Response({'sent':message}, status=status.HTTP_200_OK)
+
+	
+
+class UsernameAPI(generics.GenericAPIView):
+	serializer_class = UsernameSerializer
+
+	def post(self, request):
+		serializer = UsernameSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+		return Response({"status":"available"}) 
+
+class verify_email(generics.GenericAPIView):
+	serializer_class = EmailVerificationTokenSerializer 
+
+	def get_object(self, token):
+		try:
+			token = EmailVerificationToken.objects.get(token=token)
+		except EmailVerificationToken.DoesNotExist:
+			raise Http404
+		
+
+	def get(self, request, token):
+		# token = request.data['token']
+		 # Get the verification token
+		try:
+			token_obj = EmailVerificationToken.objects.get(token=token)
+		except EmailVerificationToken.DoesNotExist:
+			# Return an error response if the token is invalid or expired
+			return Response({'message':'Invalid or expired token'}, status=status.HTTP_400_BAD_REQUEST)
+
+		# Verify the user's email address
+		user = token_obj.user
+		user.is_active = True
+		user.save()
+
+		# Delete the verification token only if the user is made active
+		if user.is_active:
+			token_obj.delete()
+
+		# Return a success response
+		response = 'Your email address has been verified'
+
+		return Response({'data':response})
+
+
+

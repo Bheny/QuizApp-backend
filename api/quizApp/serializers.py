@@ -1,6 +1,18 @@
 from rest_framework import serializers
-from .models import Quiz, Question, Option
+from .models import Quiz, Question, Option, Classroom
 
+
+
+class ClassroomSerializer(serializers.ModelSerializer):
+    quizes = serializers.SerializerMethodField()
+    class Meta:
+        model = Classroom
+        fields = ['id','name','lecturer','quizes']
+
+    def get_quizes(self, obj):
+        quizes = obj.get_all_quizes()
+        serializer = QuizSerializer(quizes, many=True)
+        return serializer.data
 
 class OptionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,7 +37,7 @@ class QuizSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Quiz
-        fields = ['id', 'name', 'description', 'created_by', 'questions']
+        fields = ['id', 'name', 'description','questions']
         
     def get_questions(self, obj):
         questions = obj.get_all_questions()
