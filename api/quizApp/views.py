@@ -42,6 +42,7 @@ class QuizViewSet(viewsets.ModelViewSet):
                 if cell.value:
                     answers.append(cell.value)
             questions.append({'text': text, 'answers': answers})
+            print(questions)
 
         # Create the questions and answers
         for question_data in questions:
