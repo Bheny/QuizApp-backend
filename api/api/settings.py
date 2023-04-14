@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-8ya%2dx-=*m_cc0y6ulx@wv5xhnm!r1z@8p(hxuw4#6!$%h5o(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['quizroomapp.pythonanywhere.com']
+ALLOWED_HOSTS = ['quizroomapp.pythonanywhere.com','localhost' ]
 
 
 # Application definition

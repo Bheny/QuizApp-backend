@@ -18,6 +18,7 @@ class Quiz(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField()
     classroom = models.ForeignKey(Classroom, related_name="quiz", on_delete=models.CASCADE, null=True, blank=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 

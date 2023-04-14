@@ -12,6 +12,16 @@ class ClassroomViewSet(viewsets.ModelViewSet):
     serializer_class = ClassroomSerializer
     queryset = Classroom.objects.all()
 
+    @action(detail=False, methods=['get'])
+    def get_classroom_by_Name(self, request, Name=None):
+        try:
+            classroom = Classroom.objects.get(name=Name)
+            serializer = ClassroomSerializer(classroom)
+            return Response(serializer.data)
+        except Classroom.DoesNotExist:
+            return Response({'error':'This Classroom does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+            # raise Http404
+
 class QuizViewSet(viewsets.ModelViewSet):
     serializer_class = QuizSerializer 
     queryset = Quiz.objects.all()

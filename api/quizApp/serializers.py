@@ -25,7 +25,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ('id', 'text', 'options')
+        fields = ('id', 'text', 'options','is_active')
 
     def get_options(self, obj):
         options = obj.get_all_options()
