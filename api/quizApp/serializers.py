@@ -1,5 +1,12 @@
 from rest_framework import serializers
-from .models import Quiz, Question, Option, Classroom
+from .models import Quiz, Question, Option, Classroom, Submission, Student, Assessment
+
+
+
+class AssessmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assessment 
+        fields = '__all__'
 
 
 
@@ -25,7 +32,7 @@ class QuestionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ('id', 'text', 'options','is_active')
+        fields = ('id', 'text', 'options')
 
     def get_options(self, obj):
         options = obj.get_all_options()
@@ -37,9 +44,21 @@ class QuizSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Quiz
-        fields = ['id', 'name', 'description','questions']
+        fields = ['id', 'name', 'description','questions','is_active']
         
     def get_questions(self, obj):
         questions = obj.get_all_questions()
         serializer = QuestionSerializer(questions, many=True)
         return serializer.data
+
+class SubmissionSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Submission 
+        fields = '__all__'
+
+class StudentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Student 
+        fields = '__all__'

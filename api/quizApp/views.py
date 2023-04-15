@@ -6,7 +6,40 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status 
 import openpyxl
+from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
+
+
 # Create your views here.
+
+class SubmissionViewSet(viewsets.ModelViewSet):
+    serializer_class = SubmissionSerializer
+    queryset = Submission.objects.all()
+
+    action(detail=True, methods=['post'])
+    def upload_answers(self, request, pk):
+        # Get the quiz object with the given ID
+        quiz = get_object_or_404(Quiz, id=pk)
+        
+        # Parse the user's answers from the request body
+        submitted_answers = request.data['answers']
+        
+        # Validate the user's answers
+        if not submitted_answers:
+            return Response({'error': 'No answers submitted'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Save the user's answers to the database
+        for answer in submitted_answers:
+            student_id = answer['student_id']
+            question_id = answer['question_id']
+            selected_option_id = answer['selected_option_id']
+            question = get_object_or_404(Question, id=question_id, quiz=quiz)
+            selected_option = get_object_or_404(Option, id=selected_option_id, question=question)
+            Submission.objects.create(user=Student.object.get(id=student_id), quiz=quiz, question=question, selected_option=selected_option)
+        
+        # Return a success message
+        return Response({'message': 'Answers submitted successfully'}, status=status.HTTP_201_CREATED)
+
 
 class ClassroomViewSet(viewsets.ModelViewSet):
     serializer_class = ClassroomSerializer
@@ -22,10 +55,10 @@ class ClassroomViewSet(viewsets.ModelViewSet):
             return Response({'error':'This Classroom does not exist'}, status=status.HTTP_400_BAD_REQUEST)
             # raise Http404
 
+
 class QuizViewSet(viewsets.ModelViewSet):
     serializer_class = QuizSerializer 
     queryset = Quiz.objects.all()
-
     
     @action(detail=True, methods=['post'])
     def upload_questions(self, request, pk=None):
@@ -72,10 +105,14 @@ class OptionViewSet(viewsets.ModelViewSet):
     serializer_class = OptionSerializer
     queryset = Option.objects.all()
 
+class StudentViewSet(viewsets.ModelViewSet):
+    serializer_class = StudentSerializer
+    queryset = Student.objects.all()
+
+class AssessmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AssessmentSerializer
+    queryset = Assessment.objects.all()
 
 
-
-
-
-
-
+    def update(self, request, pk=None):
+        pass
